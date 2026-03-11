@@ -1,0 +1,155 @@
+<div class="shell">
+  <section class="hero hero-compact">
+    <div>
+      <p class="eyebrow">Repository</p>
+      <h1><%= @repository.full_name %></h1>
+      <p class="lede">Last synced <%= @repository.last_synced_at ? time_ago_in_words(@repository.last_synced_at) + " ago" : "never" %>.</p>
+    </div>
+    <%= link_to "Back", root_path, class: "button button-subtle" %>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Filters</h2>
+      <span class="metric"><%= pluralize(@report.pull_requests.count, "PR") %></span>
+    </div>
+    <%= form_with url: repository_path(@repository), method: :get, class: "stack" do %>
+      <div class="field-grid">
+        <div>
+          <%= label_tag :author, "Author login" %>
+          <%= text_field_tag :author, params[:author], placeholder: "octocat" %>
+        </div>
+        <div>
+          <%= label_tag :from, "Created from" %>
+          <%= date_field_tag :from, params[:from] %>
+        </div>
+        <div>
+          <%= label_tag :to, "Created to" %>
+          <%= date_field_tag :to, params[:to] %>
+        </div>
+      </div>
+      <div class="actions">
+        <%= submit_tag "Apply filters", class: "button" %>
+        <%= link_to "Clear", repository_path(@repository), class: "button button-subtle" %>
+      </div>
+    <% end %>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Refresh cache</h2>
+      <span class="metric">Fetches GitHub again</span>
+    </div>
+    <%= form_with url: refresh_repository_path(@repository), method: :post, class: "stack" do %>
+      <div class="field-grid">
+        <div>
+          <%= label_tag "sync[numbers]", "PR numbers" %>
+          <%= text_field_tag "sync[numbers]", nil, placeholder: "123, 124" %>
+        </div>
+        <div>
+          <%= label_tag "sync[author]", "Author login" %>
+          <%= text_field_tag "sync[author]", params[:author], placeholder: "octocat" %>
+        </div>
+        <div>
+          <%= label_tag "sync[from]", "Created from" %>
+          <%= date_field_tag "sync[from]", params[:from] %>
+        </div>
+        <div>
+          <%= label_tag "sync[to]", "Created to" %>
+          <%= date_field_tag "sync[to]", params[:to] %>
+        </div>
+        <div class="field-span">
+          <%= label_tag "sync[token]", "GitHub token (optional)" %>
+          <%= password_field_tag "sync[token]", nil, placeholder: "Uses GITHUB_TOKEN or gh auth token if blank" %>
+        </div>
+      </div>
+      <%= submit_tag "Refresh data", class: "button" %>
+    <% end %>
+  </section>
+
+  <section class="stats-grid">
+    <article class="stat-card">
+      <p class="eyebrow">Ready to 2 approvals</p>
+      <strong><%= format_duration(@report.average_ready_for_review_to_second_approval) %></strong>
+    </article>
+    <article class="stat-card">
+      <p class="eyebrow">Created to merged</p>
+      <strong><%= format_duration(@report.average_creation_to_merge) %></strong>
+    </article>
+  </section>
+
+  <section class="two-column">
+    <article class="panel">
+      <h2>Top reviewers per author</h2>
+      <div class="stack-sm">
+        <% @report.author_top_reviewers.each do |entry| %>
+          <div class="list-card">
+            <h3><%= entry[:author].login %></h3>
+            <% if entry[:reviewers].any? %>
+              <% entry[:reviewers].each do |reviewer_entry| %>
+                <div class="row">
+                  <span><%= reviewer_entry[:reviewer].login %></span>
+                  <span><%= reviewer_entry[:reviews_count] %> reviews across <%= reviewer_entry[:pull_requests_count] %> PRs</span>
+                </div>
+              <% end %>
+            <% else %>
+              <p class="muted">No reviews in the filtered set.</p>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </article>
+
+    <article class="panel">
+      <h2>Reviewer action breakdown</h2>
+      <div class="stack-sm">
+        <% @report.reviewer_action_breakdown.each do |entry| %>
+          <div class="list-card">
+            <div class="row">
+              <h3><%= entry[:reviewer].login %></h3>
+              <span><%= pluralize(entry[:total], "review") %></span>
+            </div>
+            <div class="chips">
+              <% entry[:actions].sort.each do |state, count| %>
+                <span class="chip"><%= state.humanize %>: <%= count %></span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </article>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Pull requests</h2>
+      <span class="metric">Cached details and timings</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>PR</th>
+            <th>Author</th>
+            <th>State</th>
+            <th>Ready to 2 approvals</th>
+            <th>Created to merged</th>
+            <th>First review</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @report.pull_requests.each do |pull_request| %>
+            <tr>
+              <td><%= link_to "##{pull_request.number} #{pull_request.title}", pull_request_path(pull_request) %></td>
+              <td><%= pull_request.author.login %></td>
+              <td><span class="badge"><%= pull_request_state_badge(pull_request) %></span></td>
+              <td><%= format_duration(pull_request.time_to_second_approval) %></td>
+              <td><%= format_duration(pull_request.time_to_merge) %></td>
+              <td><%= pull_request.first_reviewer ? "#{pull_request.first_reviewer.login} at #{l(pull_request.first_reviewed_at, format: :short)}" : "n/a" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
