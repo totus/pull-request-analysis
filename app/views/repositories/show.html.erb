@@ -8,6 +8,23 @@
     <%= link_to "Back", root_path, class: "button button-subtle" %>
   </section>
 
+  <% if @active_sync_run %>
+    <section class="panel progress-panel" data-sync-run-poll-url="<%= repository_sync_run_path(@repository, @active_sync_run) %>">
+      <div class="panel-header">
+        <h2>Sync progress</h2>
+        <span class="<%= sync_run_status_class(@active_sync_run) %>" data-role="status"><%= @active_sync_run.status %></span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-bar" data-role="progress-bar" style="width: <%= @active_sync_run.progress_percentage %>%"></div>
+      </div>
+      <div class="row">
+        <span data-role="counts"><%= @active_sync_run.processed_count %> / <%= @active_sync_run.total_count %></span>
+        <span data-role="current"><%= @active_sync_run.current_pull_request_number ? "Processing PR ##{@active_sync_run.current_pull_request_number}" : "Queued" %></span>
+      </div>
+      <p class="muted" data-role="error"><%= @active_sync_run.error_message %></p>
+    </section>
+  <% end %>
+
   <section class="panel">
     <div class="panel-header">
       <h2>Filters</h2>
@@ -16,8 +33,12 @@
     <%= form_with url: repository_path(@repository), method: :get, class: "stack" do %>
       <div class="field-grid">
         <div>
-          <%= label_tag :author, "Author login" %>
-          <%= text_field_tag :author, params[:author], placeholder: "octocat" %>
+          <%= label_tag :include_authors, "Include authors" %>
+          <%= text_field_tag :include_authors, params[:include_authors], placeholder: "octocat, hubot" %>
+        </div>
+        <div>
+          <%= label_tag :exclude_authors, "Exclude authors" %>
+          <%= text_field_tag :exclude_authors, params[:exclude_authors], placeholder: "renovate[bot]" %>
         </div>
         <div>
           <%= label_tag :from, "Created from" %>
@@ -27,6 +48,26 @@
           <%= label_tag :to, "Created to" %>
           <%= date_field_tag :to, params[:to] %>
         </div>
+      </div>
+      <div class="checkbox-grid">
+        <fieldset class="checkset">
+          <legend>Include statuses</legend>
+          <% ApplicationHelper::STATUS_OPTIONS.each do |status| %>
+            <label class="checkbox">
+              <%= check_box_tag "included_statuses[]", status, Array(params[:included_statuses]).include?(status) %>
+              <span><%= status.humanize %></span>
+            </label>
+          <% end %>
+        </fieldset>
+        <fieldset class="checkset">
+          <legend>Exclude statuses</legend>
+          <% ApplicationHelper::STATUS_OPTIONS.each do |status| %>
+            <label class="checkbox">
+              <%= check_box_tag "excluded_statuses[]", status, Array(params[:excluded_statuses]).include?(status) %>
+              <span><%= status.humanize %></span>
+            </label>
+          <% end %>
+        </fieldset>
       </div>
       <div class="actions">
         <%= submit_tag "Apply filters", class: "button" %>
@@ -48,7 +89,7 @@
         </div>
         <div>
           <%= label_tag "sync[author]", "Author login" %>
-          <%= text_field_tag "sync[author]", params[:author], placeholder: "octocat" %>
+          <%= text_field_tag "sync[author]", params[:include_authors], placeholder: "octocat" %>
         </div>
         <div>
           <%= label_tag "sync[from]", "Created from" %>
@@ -125,16 +166,16 @@
       <h2>Pull requests</h2>
       <span class="metric">Cached details and timings</span>
     </div>
-    <div class="table-wrap">
+      <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>PR</th>
-            <th>Author</th>
-            <th>State</th>
-            <th>Ready to 2 approvals</th>
-            <th>Created to merged</th>
-            <th>First review</th>
+            <th><%= sortable_repository_header(@repository, "PR", "number") %></th>
+            <th><%= sortable_repository_header(@repository, "Author", "author") %></th>
+            <th><%= sortable_repository_header(@repository, "State", "state") %></th>
+            <th><%= sortable_repository_header(@repository, "Ready to 2 approvals", "ready_to_approval") %></th>
+            <th><%= sortable_repository_header(@repository, "Created to merged", "created_to_merged") %></th>
+            <th><%= sortable_repository_header(@repository, "First review", "first_review") %></th>
           </tr>
         </thead>
         <tbody>
@@ -150,6 +191,26 @@
           <% end %>
         </tbody>
       </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Recent sync runs</h2>
+      <span class="metric"><%= pluralize(@sync_runs.count, "run") %></span>
+    </div>
+    <div class="stack-sm">
+      <% @sync_runs.each do |sync_run| %>
+        <div class="list-card">
+          <div class="row">
+            <strong><%= l(sync_run.created_at, format: :short) %></strong>
+            <span class="<%= sync_run_status_class(sync_run) %>"><%= sync_run.status %></span>
+          </div>
+          <p class="muted">
+            <%= sync_run.filters.present? ? sync_run.filters.map { |key, value| "#{key}=#{Array(value).join(",")}" }.join(" | ") : "Full repository refresh" %>
+          </p>
+        </div>
+      <% end %>
     </div>
   </section>
 </div>

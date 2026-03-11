@@ -1,5 +1,6 @@
 class Repository < ApplicationRecord
   has_many :pull_requests, dependent: :destroy
+  has_many :sync_runs, dependent: :destroy
 
   validates :owner, :name, :full_name, presence: true
   validates :full_name, uniqueness: true
@@ -8,6 +9,10 @@ class Repository < ApplicationRecord
   before_validation :normalize_names
 
   scope :alphabetical, -> { order(:full_name) }
+
+  def latest_sync_run
+    sync_runs.recent_first.first
+  end
 
   private
 

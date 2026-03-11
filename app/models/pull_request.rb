@@ -10,6 +10,8 @@ class PullRequest < ApplicationRecord
   validates :github_id, uniqueness: true
 
   scope :recent_first, -> { order(github_created_at: :desc) }
+  scope :with_authors, ->(logins) { joins(:author).where(github_users: { login: logins }) }
+  scope :without_authors, ->(logins) { joins(:author).where.not(github_users: { login: logins }) }
   scope :created_between, lambda { |from_time, to_time|
     scope = all
     scope = scope.where("github_created_at >= ?", from_time) if from_time.present?
@@ -19,6 +21,14 @@ class PullRequest < ApplicationRecord
 
   def second_approval_at
     reviews.select(&:approved?).sort_by(&:submitted_at).second&.submitted_at
+  end
+
+  def computed_status
+    return "merged" if merged?
+    return "closed" if closed_at.present?
+    return "draft" if draft?
+
+    "open"
   end
 
   def time_to_second_approval

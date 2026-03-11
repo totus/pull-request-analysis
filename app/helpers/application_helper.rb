@@ -1,4 +1,6 @@
 module ApplicationHelper
+  STATUS_OPTIONS = %w[open draft merged closed].freeze
+
   def format_duration(seconds)
     return "n/a" if seconds.blank?
 
@@ -14,14 +16,16 @@ module ApplicationHelper
   end
 
   def pull_request_state_badge(pull_request)
-    if pull_request.merged?
-      "merged"
-    elsif pull_request.closed_at.present?
-      "closed"
-    elsif pull_request.draft?
-      "draft"
-    else
-      pull_request.state
-    end
+    pull_request.computed_status
+  end
+
+  def sortable_repository_header(repository, label, key)
+    next_direction = params[:sort] == key && params[:direction] != "asc" ? "asc" : "desc"
+    indicator = params[:sort] == key ? (params[:direction] == "asc" ? "↑" : "↓") : "↕"
+    link_to "#{label} #{indicator}", repository_path(repository, request.query_parameters.merge(sort: key, direction: next_direction))
+  end
+
+  def sync_run_status_class(sync_run)
+    "sync-status sync-status-#{sync_run.status}"
   end
 end

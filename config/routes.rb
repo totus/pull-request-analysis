@@ -5,6 +5,7 @@ Rails.application.routes.draw do
 
   resources :repositories, only: [ :index, :create, :show ] do
     post :refresh, on: :member
+    resources :sync_runs, only: :show
   end
 
   resources :pull_requests, only: :show

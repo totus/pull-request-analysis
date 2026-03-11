@@ -9,8 +9,12 @@ module Github
       refresh_repository_metadata!
 
       pull_request_numbers = Array(numbers).presence || discover_numbers(author:, from:, to:)
-      pull_request_numbers.each do |number|
+      yield(total_count: pull_request_numbers.size, processed_count: 0, current_pull_request_number: nil) if block_given?
+
+      pull_request_numbers.each_with_index do |number, index|
+        yield(total_count: pull_request_numbers.size, processed_count: index, current_pull_request_number: number) if block_given?
         sync_pull_request!(number)
+        yield(total_count: pull_request_numbers.size, processed_count: index + 1, current_pull_request_number: number) if block_given?
       end
 
       repository.update!(last_synced_at: Time.current)
