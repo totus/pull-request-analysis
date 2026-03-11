@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+
+require_relative "../config/environment"
+require_relative "../lib/pull_request_analysis_cli"
+
+PullRequestAnalysisCli.start(ARGV)

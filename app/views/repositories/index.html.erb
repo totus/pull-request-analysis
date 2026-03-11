@@ -1,0 +1,47 @@
+<div class="shell">
+  <section class="hero">
+    <p class="eyebrow">Pull Request Analysis</p>
+    <h1>Analyze GitHub pull request flow from cached SQLite data.</h1>
+    <p class="lede">Sync a repository once, then inspect cycle time, review latency, reviewer behavior, and per-PR timelines without hitting GitHub on every page load.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Add repository</h2>
+    <%= form_with model: Repository.new, url: repositories_path, class: "stack" do |form| %>
+      <div class="field-grid">
+        <div>
+          <%= form.label :full_name, "Repository" %>
+          <%= form.text_field :full_name, placeholder: "rails/rails", required: true %>
+        </div>
+        <div>
+          <%= label_tag "sync[token]", "GitHub token (optional)" %>
+          <%= password_field_tag "sync[token]", nil, placeholder: "Uses GITHUB_TOKEN or gh auth token if blank" %>
+        </div>
+        <div>
+          <%= label_tag "sync[from]", "From date" %>
+          <%= date_field_tag "sync[from]" %>
+        </div>
+        <div>
+          <%= label_tag "sync[to]", "To date" %>
+          <%= date_field_tag "sync[to]" %>
+        </div>
+      </div>
+      <%= submit_tag "Create and sync", class: "button" %>
+    <% end %>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Tracked repositories</h2>
+      <span class="metric"><%= pluralize(@repositories.count, "repository") %></span>
+    </div>
+    <div class="repository-list">
+      <% @repositories.each do |repository| %>
+        <%= link_to repository.full_name, repository_path(repository), class: "repository-card" %>
+      <% end %>
+      <% if @repositories.empty? %>
+        <p class="empty-state">No repositories synced yet.</p>
+      <% end %>
+    </div>
+  </section>
+</div>

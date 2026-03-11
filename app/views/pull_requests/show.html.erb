@@ -1,0 +1,47 @@
+<div class="shell">
+  <section class="hero hero-compact">
+    <div>
+      <p class="eyebrow"><%= @pull_request.repository.full_name %></p>
+      <h1>PR #<%= @pull_request.number %>: <%= @pull_request.title %></h1>
+      <p class="lede">Opened by <%= @pull_request.author.login %>. <a href="<%= @pull_request.pull_request_url %>" target="_blank" rel="noreferrer">Open on GitHub</a>.</p>
+    </div>
+    <%= link_to "Back to repository", repository_path(@pull_request.repository), class: "button button-subtle" %>
+  </section>
+
+  <section class="stats-grid">
+    <article class="stat-card">
+      <p class="eyebrow">Ready to 2 approvals</p>
+      <strong><%= format_duration(@pull_request.time_to_second_approval) %></strong>
+    </article>
+    <article class="stat-card">
+      <p class="eyebrow">Created to merged</p>
+      <strong><%= format_duration(@pull_request.time_to_merge) %></strong>
+    </article>
+    <article class="stat-card">
+      <p class="eyebrow">Review count</p>
+      <strong><%= @pull_request.reviews.count %></strong>
+    </article>
+  </section>
+
+  <section class="panel">
+    <h2>Timeline</h2>
+    <div class="timeline">
+      <% @pull_request.events.timeline.each do |event| %>
+        <article class="timeline-item">
+          <div>
+            <strong><%= event.label %></strong>
+            <p class="muted"><%= l(event.occurred_at, format: :long) %></p>
+          </div>
+          <div class="timeline-meta">
+            <span><%= event.actor&.login || "system" %></span>
+            <% if event.payload["message"].present? %>
+              <span><%= event.payload["message"] %></span>
+            <% elsif event.payload["state"].present? %>
+              <span><%= event.payload["state"].humanize %></span>
+            <% end %>
+          </div>
+        </article>
+      <% end %>
+    </div>
+  </section>
+</div>
