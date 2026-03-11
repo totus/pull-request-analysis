@@ -1,23 +1,25 @@
 module Reports
   class RepositoryReport
-    attr_reader :repository, :author_login, :from, :to
+    SORTS = %w[number author state ready_to_approval created_to_merged first_review created_at].freeze
+    DIRECTIONS = %w[asc desc].freeze
+    STATUS_OPTIONS = %w[open draft merged closed].freeze
 
-    def initialize(repository:, author_login: nil, from: nil, to: nil)
+    attr_reader :repository, :from, :to, :sort, :direction
+
+    def initialize(repository:, include_authors: nil, exclude_authors: nil, from: nil, to: nil, included_statuses: nil, excluded_statuses: nil, sort: nil, direction: nil)
       @repository = repository
-      @author_login = author_login.presence
+      @include_authors = parse_list(include_authors)
+      @exclude_authors = parse_list(exclude_authors)
       @from = from.presence && Time.zone.parse(from.to_s)
       @to = to.presence && Time.zone.parse(to.to_s).end_of_day
+      @included_statuses = parse_statuses(included_statuses)
+      @excluded_statuses = parse_statuses(excluded_statuses)
+      @sort = SORTS.include?(sort) ? sort : "created_at"
+      @direction = DIRECTIONS.include?(direction) ? direction : "desc"
     end
 
     def pull_requests
-      @pull_requests ||= begin
-        scope = repository.pull_requests
-          .includes(:author, :first_reviewer, reviews: :reviewer)
-          .created_between(from, to)
-          .recent_first
-        scope = scope.joins(:author).where(github_users: { login: author_login }) if author_login.present?
-        scope
-      end
+      @pull_requests ||= sort_pull_requests(filtered_scope.load)
     end
 
     def average_ready_for_review_to_second_approval
@@ -59,14 +61,67 @@ module Reports
 
     private
 
+    def filtered_scope
+      scope = repository.pull_requests
+        .includes(:author, :first_reviewer, reviews: :reviewer)
+        .created_between(from, to)
+      scope = scope.with_authors(@include_authors) if @include_authors.any?
+      scope = scope.without_authors(@exclude_authors) if @exclude_authors.any?
+      filter_by_status(scope)
+    end
+
+    def filter_by_status(scope)
+      included_ids = if @included_statuses.any?
+        scope.select { |pull_request| @included_statuses.include?(pull_request.computed_status) }.map(&:id)
+      else
+        scope.pluck(:id)
+      end
+
+      excluded_ids = if @excluded_statuses.any?
+        scope.select { |pull_request| @excluded_statuses.include?(pull_request.computed_status) }.map(&:id)
+      else
+        []
+      end
+
+      scope.where(id: included_ids - excluded_ids)
+    end
+
+    def sort_pull_requests(records)
+      sorted = records.sort_by do |pull_request|
+        case sort
+        when "number" then pull_request.number
+        when "author" then pull_request.author.login
+        when "state" then pull_request.computed_status
+        when "ready_to_approval" then pull_request.time_to_second_approval || Float::INFINITY
+        when "created_to_merged" then pull_request.time_to_merge || Float::INFINITY
+        when "first_review" then pull_request.first_reviewed_at&.to_i || Float::INFINITY
+        else
+          pull_request.github_created_at.to_i
+        end
+      end
+
+      direction == "desc" ? sorted.reverse : sorted
+    end
+
     def review_counts
       PullRequestReview.joins(:pull_request, :reviewer)
-        .where(pull_requests: { id: pull_requests.select(:id) })
+        .where(pull_requests: { id: pull_requests.map(&:id) })
         .group("github_users.id", :state)
         .count
         .each_with_object(Hash.new { |hash, key| hash[key] = Hash.new(0) }) do |((reviewer_id, state), count), memo|
           memo[reviewer_id][state] += count
         end
+    end
+
+    def parse_list(value)
+      value.to_s.split(",").map(&:strip).reject(&:blank?).uniq
+    end
+
+    def parse_statuses(values)
+      Array(values).filter_map do |value|
+        normalized = value.to_s
+        normalized if STATUS_OPTIONS.include?(normalized)
+      end.uniq
     end
 
     def average_duration(values)

@@ -57,8 +57,25 @@ The repository page gives:
 
 - cached metrics and PR table
 - author and reviewer aggregates
-- forced refresh by PR numbers, author, date range, or date range alone
+- async refresh by PR numbers, author, date range, or date range alone
+- live progress with polling
+- include/exclude filters for authors and PR statuses
+- sortable PR table headers
 - per-PR timeline pages
+
+## Background processing
+
+Sync requests are queued as background jobs so the web request stays short enough for platforms with request timeouts.
+
+In development, running `bin/rails server` also starts the Solid Queue supervisor through Puma.
+
+For production or a separate worker process, run:
+
+```bash
+bin/jobs start
+```
+
+If you deploy to Heroku-like platforms, run the web process and the jobs process separately.
 
 ## Run the CLI
 
@@ -87,6 +104,8 @@ Validated locally with:
 ```bash
 bundle exec rails db:prepare
 bundle exec rails routes
+bin/jobs --help
 bin/pr_analysis help
+bundle exec rails runner 'puts :ok'
 bundle exec rubocop --cache-root tmp/rubocop-cache
 ```

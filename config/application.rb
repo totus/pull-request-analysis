@@ -2,6 +2,7 @@ require_relative "boot"
 
 require "rails"
 require "active_model/railtie"
+require "active_job/railtie"
 require "active_record/railtie"
 require "action_controller/railtie"
 require "action_view/railtie"
@@ -25,6 +26,8 @@ module PullRequestAnalysis
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+    config.active_job.queue_adapter = :solid_queue
+    config.solid_queue.connects_to = { database: { writing: :queue } }
 
     # Don't generate system test files.
     config.generators.system_tests = nil

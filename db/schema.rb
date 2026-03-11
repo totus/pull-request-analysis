@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_11_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_11_101500) do
   create_table "github_users", force: :cascade do |t|
     t.string "avatar_url"
     t.datetime "created_at", null: false
@@ -99,6 +99,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_090000) do
     t.index ["full_name"], name: "index_repositories_on_full_name", unique: true
   end
 
+  create_table "sync_runs", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "current_pull_request_number"
+    t.text "error_message"
+    t.json "filters", default: {}, null: false
+    t.datetime "finished_at"
+    t.string "job_id"
+    t.integer "processed_count", default: 0, null: false
+    t.integer "repository_id", null: false
+    t.datetime "started_at"
+    t.string "status", default: "queued", null: false
+    t.integer "total_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_sync_runs_on_created_at"
+    t.index ["repository_id"], name: "index_sync_runs_on_repository_id"
+    t.index ["status"], name: "index_sync_runs_on_status"
+  end
+
   add_foreign_key "pull_request_events", "github_users", column: "actor_id"
   add_foreign_key "pull_request_events", "pull_requests"
   add_foreign_key "pull_request_reviews", "github_users", column: "reviewer_id"
@@ -106,4 +124,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_090000) do
   add_foreign_key "pull_requests", "github_users", column: "author_id"
   add_foreign_key "pull_requests", "github_users", column: "first_reviewer_id"
   add_foreign_key "pull_requests", "repositories"
+  add_foreign_key "sync_runs", "repositories"
 end
